@@ -213,7 +213,7 @@ var initTask = function (cos) {
         util.getFileSize(api, params, function (err, size) {
             // 开始处理上传
             if (err) { // 如果获取大小出错，不加入队列
-                callback(err);
+                callback(util.error(err));
                 return;
             }
             // 获取完文件大小再把任务加入队列

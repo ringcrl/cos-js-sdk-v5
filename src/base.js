@@ -467,7 +467,7 @@ function putBucketPolicy(params, callback) {
             PolicyStr = JSON.stringify(Policy);
         }
     } catch (e) {
-        callback({error: 'Policy format error'});
+        callback(util.error(new Error('Policy format error')));
     }
 
     var headers = params.Headers;
@@ -517,13 +517,13 @@ function getBucketPolicy(params, callback) {
     }, function (err, data) {
         if (err) {
             if (err.statusCode && err.statusCode === 403) {
-                return callback({ErrorStatus: 'Access Denied'});
+                return callback(util.error(err, {ErrorStatus: 'Access Denied'}));
             }
             if (err.statusCode && err.statusCode === 405) {
-                return callback({ErrorStatus: 'Method Not Allowed'});
+                return callback(util.error(err, {ErrorStatus: 'Method Not Allowed'}));
             }
             if (err.statusCode && err.statusCode === 404) {
-                return callback({ErrorStatus: 'Policy Not Found'});
+                return callback(util.error(err, {ErrorStatus: 'Policy Not Found'}));
             }
             return callback(err);
         }
@@ -780,7 +780,7 @@ function deleteBucketLifecycle(params, callback) {
 function putBucketVersioning(params, callback) {
 
     if (!params['VersioningConfiguration']) {
-        callback({error: 'missing param VersioningConfiguration'});
+        callback(util.error(new Error('missing param VersioningConfiguration')));
         return;
     }
     var VersioningConfiguration = params['VersioningConfiguration'] || {};
@@ -929,7 +929,7 @@ function deleteBucketReplication(params, callback) {
 function putBucketWebsite(params, callback) {
 
     if (!params['WebsiteConfiguration']) {
-        callback({ error: 'missing param WebsiteConfiguration' });
+        callback(util.error(new Error('missing param WebsiteConfiguration')));
         return;
     }
 
@@ -1063,7 +1063,7 @@ function deleteBucketWebsite(params, callback) {
 function putBucketReferer(params, callback) {
 
     if (!params['RefererConfiguration']) {
-        callback({ error: 'missing param RefererConfiguration' });
+        callback(util.error(new Error('missing param RefererConfiguration')));
         return;
     }
 
@@ -1637,7 +1637,7 @@ function deleteBucketInventory(params, callback) {
 function putBucketAccelerate(params, callback) {
 
     if (!params['AccelerateConfiguration']) {
-        callback({error: 'missing param AccelerateConfiguration'});
+        callback(util.error(new Error('missing param AccelerateConfiguration')));
         return;
     }
 
@@ -2122,7 +2122,7 @@ function putObjectCopy(params, callback) {
     var CopySource = params.CopySource || '';
     var m = CopySource.match(/^([^.]+-\d+)\.cos(v6)?\.([^.]+)\.[^/]+\/(.+)$/);
     if (!m) {
-        callback({error: 'CopySource format error'});
+        callback(util.error(new Error('CopySource format error')));
         return;
     }
 
@@ -2164,7 +2164,7 @@ function uploadPartCopy(params, callback) {
     var CopySource = params.CopySource || '';
     var m = CopySource.match(/^([^.]+-\d+)\.cos(v6)?\.([^.]+)\.[^/]+\/(.+)$/);
     if (!m) {
-        callback({error: 'CopySource format error'});
+        callback(util.error(new Error('CopySource format error')));
         return;
     }
 
@@ -2256,7 +2256,7 @@ function deleteMultipleObject(params, callback) {
 function restoreObject(params, callback) {
     var headers = params.Headers;
     if (!params['RestoreRequest']) {
-        callback({error: 'missing param RestoreRequest'});
+        callback(util.error(new Error('missing param RestoreRequest')));
         return;
     }
 
@@ -2420,7 +2420,7 @@ function deleteObjectTagging(params, callback) {
  */
 function selectObjectContent(params, callback) {
     var SelectType = params['SelectType'];
-    if (!SelectType) return callback({error: 'missing param SelectType'});
+    if (!SelectType) return callback(util.error(new Error('missing param SelectType')));
 
     var SelectRequest = params['SelectRequest'] || {};
     var xml = util.json2xml({SelectRequest: SelectRequest});
@@ -3325,10 +3325,7 @@ function _submitRequest(params, callback) {
         };
 
         // 请求错误，发生网络错误
-        if (err) {
-            cb({error: err});
-            return;
-        }
+        if (err) return cb(util.error(err));
 
         // 不对 body 进行转换，body 直接挂载返回
         var jsonRes;
@@ -3342,17 +3339,45 @@ function _submitRequest(params, callback) {
                 jsonRes = body || {};
             }
         }
+        var getError = function (json) {
+            var cosError = json && json.Error;
+            if (cosError) {
+                util.error(new Error(), {
+                    code: cosError.Code,
+                    message: cosError.Message,
+                    error: cosError,
+                    RequestId: cosError.RequestId,
+                    Scope: params.Scope,
+                });
+            } else if (response.statusCode) {
+                util.error(new Error(), {
+                    code: response.statusCode,
+                    message: response.statusMessage
+                });
+            } else {
+                util.error(new Error('statusCode error'));
+            }
+        };
 
         // 请求返回码不为 200
         var statusCode = response.statusCode;
         var statusSuccess = Math.floor(statusCode / 100) === 2; // 200 202 204 206
         if (!statusSuccess) {
-            cb({error: jsonRes.Error || jsonRes});
+            if (json && json.Error) {
+                cb(getError(json));
+            } else {
+                cb(util.error(jsonRes));
+            }
             return;
         }
 
-        if (jsonRes.Error) {
-            cb({error: jsonRes.Error});
+        if (json && json.Error) {
+            cb(util.error(new Error(), {
+                code: cosError.Code,
+                message: cosError.Message,
+                error: cosError,
+                RequestId: cosError.RequestId,
+            }));
             return;
         }
         cb(null, jsonRes);

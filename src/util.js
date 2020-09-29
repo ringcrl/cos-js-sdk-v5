@@ -34,8 +34,8 @@ var getAuth = function (opt) {
         pathname.indexOf('/') !== 0 && (pathname = '/' + pathname);
     }
 
-    if (!SecretId) return console.error('missing param SecretId');
-    if (!SecretKey) return console.error('missing param SecretKey');
+    if (!SecretId) return throw new Error('missing param SecretId');
+    if (!SecretKey) return throw new Error('missing param SecretKey');
 
     var getObjectKeys = function (obj, forKey) {
         var list = [];
@@ -492,11 +492,11 @@ var apiWrapper = function (apiName, apiFn) {
                 callback = function (err, data) {
                     err ? reject(err) : resolve(data);
                 };
-                if (errMsg) return _callback({error: errMsg});
+                if (errMsg) return _callback(util.error(new Error(errMsg)));
                 apiFn.call(self, params, _callback);
             });
         } else {
-            if (errMsg) return _callback({error: errMsg});
+            if (errMsg) return _callback(util.error(new Error(errMsg)));
             var res = apiFn.call(self, params, _callback);
             if (isSync) return res;
         }
@@ -556,7 +556,7 @@ var getFileSize = function (api, params, callback) {
     if ((params.Body && (params.Body instanceof Blob || params.Body.toString() === '[object File]' || params.Body.toString() === '[object Blob]'))) {
         size = params.Body.size;
     } else {
-        callback({error: 'params body format error, Only allow File|Blob|String.'});
+        callback(util.error(new Error('params body format error, Only allow File|Blob|String.')));
         return;
     }
     params.ContentLength = size;
@@ -567,6 +567,31 @@ var getFileSize = function (api, params, callback) {
 var getSkewTime = function (offset) {
     return Date.now() + (offset || 0);
 };
+
+var error = function (err, opt) {
+    err.message = err.message || null;
+
+    if (typeof opt === 'string') {
+        err.error = opt;
+        err.message = opt;
+    } else if (typeof opt === 'object' && opt !== null) {
+        extend(err, opt);
+        if (opt.message) err.message = opt.message;
+        if (opt.code || opt.name) err.code = opt.code || opt.name;
+        if (opt.stack) err.stack = opt.stack;
+    }
+
+    if (typeof Object.defineProperty === 'function') {
+        Object.defineProperty(err, 'name', {writable: true, enumerable: false});
+        Object.defineProperty(err, 'message', {enumerable: true});
+    }
+
+    err.name = opt && opt.name || err.name || err.code || 'Error';
+    if (!err.code) err.code = err.name; // 保证有 code 属性
+    if (!err.error) err.error = clone(err); // 兼容老的错误格式
+
+    return err;
+}
 
 var util = {
     noop: noop,
@@ -594,6 +619,7 @@ var util = {
     throttleOnProgress: throttleOnProgress,
     getFileSize: getFileSize,
     getSkewTime: getSkewTime,
+    error: error,
     getAuth: getAuth,
     isBrowser: true,
 };
