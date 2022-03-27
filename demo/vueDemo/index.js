@@ -221,7 +221,7 @@ window.onload = async function () {
         let sliceSize = 1024 * 1024 * 1 // 默认配置
         if (this.uploadConfig === 'dynamic') {
           // 假设网络良好
-          sliceSize = 1024 * 1024 * 10
+          sliceSize = 1024 * 1024 * 4
         }
 
         cos.uploadFiles({
@@ -231,7 +231,7 @@ window.onload = async function () {
             console.log('onProgress', info)
 
             if (this.uploadConfig === 'dynamic') {
-              if (cos.dynamicChunkParallel < 16) {
+              if (cos.dynamicChunkParallel < 10) {
                 cos.dynamicChunkParallel += 1;
               }
             }
@@ -312,7 +312,7 @@ window.onload = async function () {
       getDownloadSpeed() {
         return new Promise((resolve, reject) => {
           requestIdleCallback(() => {
-            const fileSrc = '//cdn-1257430323.cos.ap-guangzhou.myqcloud.com/assets/imgs/1920-960.png';
+            const fileSrc = '//cdn-1257430323.cos.ap-guangzhou.myqcloud.com/no-cache/1920-960.png';
             const fileSize = 3.88;
       
             const testImg = new Image();
