@@ -678,6 +678,7 @@ var throttleOnProgress = function (total, onProgress) {
     var time0 = Date.now();
     var time1;
     var timer;
+    var _info;
 
     function update() {
         timer = 0;
@@ -693,7 +694,7 @@ var throttleOnProgress = function (total, onProgress) {
             time0 = time1;
             size0 = size1;
             try {
-                onProgress({ loaded: size1, total: total, speed: speed, percent: percent });
+                onProgress(Object.assign({ loaded: size1, total: total, speed: speed, percent: percent }, _info || {}));
             } catch (e) {}
         }
     }
@@ -702,6 +703,7 @@ var throttleOnProgress = function (total, onProgress) {
         if (info) {
             size1 = info.loaded;
             total = info.total;
+            _info = info;
         }
         if (immediately) {
             clearTimeout(timer);
@@ -8784,6 +8786,11 @@ function sliceUploadFile(params, callback) {
     var ServerSideEncryption = params.ServerSideEncryption;
     var FileSize;
 
+    const runtimeConfig = {
+        ChunkSize,
+        AsyncLimit
+    };
+
     var onProgress;
     var onHashProgress = params.onHashProgress;
 
@@ -8824,7 +8831,7 @@ function sliceUploadFile(params, callback) {
                 return ep.emit('error', err);
             }
             session.removeUploadId.call(self, UploadData.UploadId);
-            onProgress({ loaded: FileSize, total: FileSize }, true);
+            onProgress(Object.assign({}, runtimeConfig, { loaded: FileSize, total: FileSize }), true);
             ep.emit('upload_complete', data);
         });
     });
@@ -9289,7 +9296,18 @@ function uploadSliceList(params, cb) {
     });
     var onProgress = params.onProgress;
 
-    Async.eachLimit(needUploadSlices, ChunkParallel, function (SliceItem, asyncCallback) {
+    const runtimeConfig = {
+        ChunkParallel: ChunkParallel,
+        SliceCount: SliceCount,
+        FinishSize: FinishSize,
+        SliceSize: SliceSize
+    };
+
+    function getChunkParallel() {
+        return self.dynamicChunkParallel || ChunkParallel;
+    }
+
+    Async.eachLimit(needUploadSlices, getChunkParallel, function (SliceItem, asyncCallback) {
         if (!self._isRunningTask(TaskId)) return;
         var PartNumber = SliceItem['PartNumber'];
         var currentSize = Math.min(FileSize, SliceItem['PartNumber'] * SliceSize) - (SliceItem['PartNumber'] - 1) * SliceSize;
@@ -9309,7 +9327,7 @@ function uploadSliceList(params, cb) {
             onProgress: function (data) {
                 FinishSize += data.loaded - preAddSize;
                 preAddSize = data.loaded;
-                onProgress({ loaded: FinishSize, total: FileSize });
+                onProgress(Object.assign({}, runtimeConfig, { loaded: FinishSize, total: FileSize }));
             }
         }, function (err, data) {
             if (!self._isRunningTask(TaskId)) return;
@@ -9320,7 +9338,7 @@ function uploadSliceList(params, cb) {
                 FinishSize += currentSize - preAddSize;
                 SliceItem.ETag = data.ETag;
             }
-            onProgress({ loaded: FinishSize, total: FileSize });
+            onProgress(Object.assign({}, runtimeConfig, { loaded: FinishSize, total: FileSize }));
             asyncCallback(err || null, data);
         });
     }, function (err) {
@@ -9666,7 +9684,7 @@ function uploadFiles(params, callback) {
                 TotalFinish = TotalFinish - PreAddSize + info.loaded;
                 PreAddSize = info.loaded;
                 _onProgress && _onProgress(info);
-                onTotalProgress({ loaded: TotalFinish, total: TotalSize });
+                onTotalProgress(Object.assign({}, info, { loaded: TotalFinish, total: TotalSize }));
             };
             fileParams.onProgress = onProgress;
 
@@ -9954,6 +9972,12 @@ module.exports.init = function (COS, task) {
 
 var eachLimit = function (arr, limit, iterator, callback) {
     callback = callback || function () {};
+    let _limit;
+    if (typeof limit === 'function') {
+        _limit = limit();
+    } else {
+        _limit = limit;
+    }
     if (!arr.length || limit <= 0) {
         return callback();
     }
@@ -9967,7 +9991,13 @@ var eachLimit = function (arr, limit, iterator, callback) {
             return callback();
         }
 
-        while (running < limit && started < arr.length) {
+        if (typeof limit === 'function') {
+            _limit = limit();
+        } else {
+            _limit = limit;
+        }
+
+        while (running < _limit && started < arr.length) {
             started += 1;
             running += 1;
             iterator(arr[started - 1], function (err) {

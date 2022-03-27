@@ -6,17 +6,23 @@ var crypto = require('crypto');
 var pathLib = require('path');
 var fs = require('fs');
 
+const dotenv = require('dotenv')
+
+dotenv.config({path: pathLib.resolve(__dirname, './.env')})
+
+const { secretId, secretKey, bucket, region }  = process.env
+
 // 配置参数
 var config = {
-    secretId: process.env.SecretId,
-    secretKey: process.env.SecretKey,
-    proxy: process.env.Proxy,
+    secretId,
+    secretKey,
+    proxy: '',
     durationSeconds: 1800,
-    bucket: process.env.Bucket,
-    region: process.env.Region,
+    bucket,
+    region,
     // 允许操作（上传）的对象前缀，可以根据自己网站的用户登录态判断允许上传的目录，例子： user1/* 或者 * 或者a.jpg
     // 请注意当使用 * 时，可能存在安全风险，详情请参阅：https://cloud.tencent.com/document/product/436/40265
-    allowPrefix: '_ALLOW_DIR_/*',
+    allowPrefix: '*',
     // 密钥的权限列表
     allowActions: [
         // 所有 action 请看文档 https://cloud.tencent.com/document/product/436/31923
@@ -45,13 +51,24 @@ var replaceBucketRegion = (filePath) => {
         res.send(content);
     };
 };
-app.use('/demo/demo.js', replaceBucketRegion(pathLib.resolve(__dirname, '../demo/demo.js')));
-app.use('/test/test.js', replaceBucketRegion(pathLib.resolve(__dirname, '../test/test.js')));
-app.use('/dist/', express.static(pathLib.resolve(__dirname, '../dist')));
-app.use('/demo/', express.static(pathLib.resolve(__dirname, '../demo')));
-app.use('/test/', express.static(pathLib.resolve(__dirname, '../test')));
+app.use('/demo/demo.js', replaceBucketRegion(pathLib.resolve(__dirname, './demo/demo.js')));
+app.use('/test/test.js', replaceBucketRegion(pathLib.resolve(__dirname, './test/test.js')));
+app.use('/dist/', express.static(pathLib.resolve(__dirname, './dist')));
+app.use('/demo/', express.static(pathLib.resolve(__dirname, './demo')));
+app.use('/test/', express.static(pathLib.resolve(__dirname, './test')));
 app.all('/', (req, res, next) => res.redirect('/demo/'));
 app.use(bodyParser.json());
+
+// 获取调试用秘钥
+app.get('/config', function (req, res, next) {
+    const config = {
+        secretId,
+        secretKey,
+        bucket,
+        region,
+    }
+    res.send(config)
+})
 
 // 格式一：临时密钥接口
 app.all('/sts', function (req, res, next) {
@@ -259,5 +276,5 @@ app.all('*', function (req, res, next) {
 });
 
 // 启动签名服务
-app.listen(3000);
-console.log('app is listening at http://127.0.0.1:3000');
+app.listen(9000);
+console.log('http://localhost:9000/demo/vueDemo/')

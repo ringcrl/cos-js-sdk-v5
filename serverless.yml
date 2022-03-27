@@ -1,0 +1,14 @@
+component: http
+name: express-cos
+inputs:
+  src:
+    src: ./
+  faas:
+    runtime: Nodejs12.16
+    framework: express
+    name: ${name}
+  apigw:
+    protocols:
+      - http
+      - https
+app: express-cos

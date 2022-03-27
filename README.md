@@ -1,3 +1,26 @@
+# COS 实验版本
+
+用于分析并发上传最优方案。
+
+```sh
+# 安装依赖
+npm i
+
+# 参照 .env.example 配置 .env 文件
+
+# 运行获取秘钥服务
+npm run server
+
+# 运行 sdk 开发脚本
+npm run dev
+
+# 开启页面进行调试
+http://localhost:9000/demo/vueDemo/
+
+# serverless 部署，云函数端口是 9000
+serverless deploy
+```
+
 # cos-js-sdk-v5
 
 腾讯云 COS JS SDK（[XML API](https://cloud.tencent.com/document/product/436/7751)）

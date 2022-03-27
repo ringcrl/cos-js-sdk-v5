@@ -620,6 +620,7 @@ var throttleOnProgress = function (total, onProgress) {
     var time0 = Date.now();
     var time1;
     var timer;
+    var _info;
 
     function update() {
         timer = 0;
@@ -635,7 +636,7 @@ var throttleOnProgress = function (total, onProgress) {
             time0 = time1;
             size0 = size1;
             try {
-                onProgress({loaded: size1, total: total, speed: speed, percent: percent});
+                onProgress(Object.assign({loaded: size1, total: total, speed: speed, percent: percent}, _info || {}));
             } catch (e) {
             }
         }
@@ -645,6 +646,7 @@ var throttleOnProgress = function (total, onProgress) {
         if (info) {
             size1 = info.loaded;
             total = info.total;
+            _info = info;
         }
         if (immediately) {
             clearTimeout(timer);

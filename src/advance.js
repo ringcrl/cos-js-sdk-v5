@@ -18,6 +18,12 @@ function sliceUploadFile(params, callback) {
     var ServerSideEncryption = params.ServerSideEncryption;
     var FileSize;
 
+
+    const runtimeConfig = {
+        ChunkSize,
+        AsyncLimit,
+    }
+
     var onProgress;
     var onHashProgress = params.onHashProgress;
 
@@ -58,7 +64,7 @@ function sliceUploadFile(params, callback) {
                 return ep.emit('error', err);
             }
             session.removeUploadId.call(self, UploadData.UploadId);
-            onProgress({loaded: FileSize, total: FileSize}, true);
+            onProgress(Object.assign({}, runtimeConfig, {loaded: FileSize, total: FileSize}), true);
             ep.emit('upload_complete', data);
         });
     });
@@ -522,7 +528,18 @@ function uploadSliceList(params, cb) {
     });
     var onProgress = params.onProgress;
 
-    Async.eachLimit(needUploadSlices, ChunkParallel, function (SliceItem, asyncCallback) {
+    const runtimeConfig = {
+        ChunkParallel: ChunkParallel,
+        SliceCount: SliceCount,
+        FinishSize: FinishSize,
+        SliceSize: SliceSize,
+    }
+
+    function getChunkParallel() {
+        return self.dynamicChunkParallel || ChunkParallel
+    }
+
+    Async.eachLimit(needUploadSlices, getChunkParallel, function (SliceItem, asyncCallback) {
         if (!self._isRunningTask(TaskId)) return;
         var PartNumber = SliceItem['PartNumber'];
         var currentSize = Math.min(FileSize, SliceItem['PartNumber'] * SliceSize) - (SliceItem['PartNumber'] - 1) * SliceSize;
@@ -542,7 +559,7 @@ function uploadSliceList(params, cb) {
             onProgress: function (data) {
                 FinishSize += data.loaded - preAddSize;
                 preAddSize = data.loaded;
-                onProgress({loaded: FinishSize, total: FileSize});
+                onProgress(Object.assign({}, runtimeConfig, {loaded: FinishSize, total: FileSize}));
             },
         }, function (err, data) {
             if (!self._isRunningTask(TaskId)) return;
@@ -553,7 +570,7 @@ function uploadSliceList(params, cb) {
                 FinishSize += currentSize - preAddSize;
                 SliceItem.ETag = data.ETag;
             }
-            onProgress({loaded: FinishSize, total: FileSize});
+            onProgress(Object.assign({}, runtimeConfig, {loaded: FinishSize, total: FileSize}));
             asyncCallback(err || null, data);
         });
     }, function (err) {
@@ -900,7 +917,7 @@ function uploadFiles(params, callback) {
                 TotalFinish = TotalFinish - PreAddSize + info.loaded;
                 PreAddSize = info.loaded;
                 _onProgress && _onProgress(info);
-                onTotalProgress({loaded: TotalFinish, total: TotalSize});
+                onTotalProgress(Object.assign({}, info, {loaded: TotalFinish, total: TotalSize}));
             };
             fileParams.onProgress = onProgress;
 

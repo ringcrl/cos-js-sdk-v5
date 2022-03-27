@@ -1,5 +1,11 @@
 var eachLimit = function (arr, limit, iterator, callback) {
     callback = callback || function () {};
+    let _limit
+    if (typeof limit === 'function') {
+        _limit = limit()
+    } else {
+        _limit = limit
+    }
     if (!arr.length || limit <= 0) {
         return callback();
     }
@@ -13,7 +19,13 @@ var eachLimit = function (arr, limit, iterator, callback) {
             return callback();
         }
 
-        while (running < limit && started < arr.length) {
+        if (typeof limit === 'function') {
+            _limit = limit()
+        } else {
+            _limit = limit
+        }
+
+        while (running < _limit && started < arr.length) {
             started += 1;
             running += 1;
             iterator(arr[started - 1], function (err) {
