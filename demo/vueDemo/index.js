@@ -9,6 +9,7 @@ window.onload = async function () {
   const cos = new COS({
     SecretId: secretId,
     SecretKey: secretKey,
+    // ForceSignHost: false,
   });
 
   /*
@@ -44,8 +45,9 @@ window.onload = async function () {
           avgSpeed: '',
         },
         currPrefixUnfinishedList: [],
-        uploadConfig: 'default',
-        networkSpeed: '测速中...'
+        uploadConfig: 'config12-16-1',
+        networkSpeed: '测速中...',
+        domainIndex: 0,
       }
     },
     computed: {
@@ -66,8 +68,24 @@ window.onload = async function () {
       this.getCurrPrefixUnfinishedList()
       speed = await this.getDownloadSpeed()
       this.networkSpeed = `${speed}MB/s`
+
+      this.initCosEvent()
     },
     methods: {
+      initCosEvent() {
+        cos.on('before-send', this.handleDomainChange)
+      },
+      handleDomainChange(e) {
+          console.log('before-send', e);
+          this.domainIndex++
+          if (this.uploadConfig === 'config12-16-2') {
+            if (this.domainIndex % 2  === 0) {
+              e.url = e.url.replace('xxx', 'xxxx')
+            }
+          }
+
+          return e
+      },
       // 查询文件列表
       getFileList(loadMore) {
         const { Prefix, Marker } = this;
@@ -217,24 +235,99 @@ window.onload = async function () {
       cosUpload(uploadFileList) {
         const startTime = Date.now()
 
-        cos.dynamicChunkParallel = 3; // 默认配置
-        let sliceSize = 1024 * 1024 * 1 // 默认配置
-        if (this.uploadConfig === 'dynamic') {
-          // 假设网络良好
-          sliceSize = 1024 * 1024 * 4
+        let sliceSize = 1024 * 1024 * 1
+        let dynamicChunkParallel = 3
+        
+        // 默认配置
+        if (this.uploadConfig === 'config3-1') {
+          dynamicChunkParallel = 3
+          sliceSize = 1024 * 1024 * 1
         }
+
+        if (this.uploadConfig === 'config3-8') {
+          dynamicChunkParallel = 3
+          sliceSize = 1024 * 1024 * 8
+        }
+
+        if (this.uploadConfig === 'config1-1') {
+          dynamicChunkParallel = 1
+          sliceSize = 1024 * 1024 * 1
+        }
+
+        if (this.uploadConfig === 'config1-32') {
+          dynamicChunkParallel = 1
+          sliceSize = 1024 * 1024 * 32
+        }
+
+        if (this.uploadConfig === 'config1-64') {
+          dynamicChunkParallel = 1
+          sliceSize = 1024 * 1024 * 64
+        }
+
+        if (this.uploadConfig === 'config1-512') {
+          dynamicChunkParallel = 1
+          sliceSize = 1024 * 1024 * 512
+        }
+
+        if (this.uploadConfig === 'config6-8') {
+          dynamicChunkParallel = 6
+          sliceSize = 1024 * 1024 * 8
+        }
+
+        if (this.uploadConfig === 'config6-10') {
+          dynamicChunkParallel = 6
+          sliceSize = 1024 * 1024 * 10
+        }
+
+        if (this.uploadConfig === 'config6-16') {
+          dynamicChunkParallel = 6
+          sliceSize = 1024 * 1024 * 16
+        }
+
+        if (this.uploadConfig === 'config10-32') {
+          dynamicChunkParallel = 10
+          sliceSize = 1024 * 1024 * 32
+        }
+        
+        if (this.uploadConfig === 'config6-64') {
+          dynamicChunkParallel = 6
+          sliceSize = 1024 * 1024 * 64
+        }
+
+        if (this.uploadConfig === 'config12-16-1') {
+          dynamicChunkParallel = 12
+          sliceSize = 1024 * 1024 * 16
+        }
+
+        if (this.uploadConfig === 'config12-16-2') {
+          dynamicChunkParallel = 12
+          sliceSize = 1024 * 1024 * 16
+        }
+
+        if (this.uploadConfig === 'config-dynamic') {
+          dynamicChunkParallel = 16
+          sliceSize = 1024 * 1024 * 64
+        }
+
+        // cos.dynamicChunkParallel = dynamicChunkParallel; // 默认配置
+
+        uploadFileList.forEach(item => {
+          item.AsyncLimit = dynamicChunkParallel
+          item.SliceSize = sliceSize
+        })
 
         cos.uploadFiles({
           files: uploadFileList,
-          SliceSize: sliceSize, // 传入参数 SliceSize 可以控制文件大小超出一个数值（默认1MB）时自动使用分块上传
+          SliceSize: 10 * 1024 * 1024, // 传入参数 SliceSize 可以控制文件大小超出一个数值（默认1MB）时自动使用分块上传
+          
           onProgress: (info) => {
             console.log('onProgress', info)
 
-            if (this.uploadConfig === 'dynamic') {
-              if (cos.dynamicChunkParallel < 10) {
-                cos.dynamicChunkParallel += 1;
-              }
-            }
+            // if (this.uploadConfig === 'dynamic') {
+            //   if (cos.dynamicChunkParallel < 10) {
+            //     cos.dynamicChunkParallel += 1;
+            //   }
+            // }
 
             // loaded 字节 byte = 8 bits，1024 byte = 1 KB，1024 KB = 1 MB，1024 MB = 1 GB
             // 中国大陆单个存储桶上行和下行共享带宽为 15Gbit/s => 15 / 8 = 2.5 GB/s
@@ -247,11 +340,11 @@ window.onload = async function () {
             const lastTimeSecond = (Date.now() - startTime) / 1000;
 
             this.uploadingInfo.name = uploadFileList[0].Key
-            this.uploadingInfo.fileSize = (info.total / 1024 / 1024).toFixed(2) + 'Mb'
+            this.uploadingInfo.fileSize = (info.total / 1024 / 1024).toFixed(2) + 'MB'
             this.uploadingInfo.percent = parseInt(info.percent * 10000) / 100 + '%' // 进度
-            this.uploadingInfo.speed = parseInt(info.speed / 1024 / 1024 * 100) / 100 + 'Mb/s' // 速度
+            this.uploadingInfo.speed = parseInt(info.speed / 1024 / 1024 * 100) / 100 + 'MB/s' // 速度
             this.uploadingInfo.lastTime = lastTimeSecond.toFixed(1) + 's' // 持续时间              
-            this.uploadingInfo.avgSpeed = ((info.loaded / 1024 / 1024) / lastTimeSecond).toFixed(1) + 'Mb/s' // 平均速度
+            this.uploadingInfo.avgSpeed = ((info.loaded / 1024 / 1024) / lastTimeSecond).toFixed(1) + 'MB/s' // 平均速度
 
           },
           onFileFinish: (err, data, options) => {

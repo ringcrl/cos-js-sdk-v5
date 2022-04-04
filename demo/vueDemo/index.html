@@ -8,7 +8,7 @@
     <script src="./vue.js"></script>
     <script src="../common/localforage.min.js"></script>
     <!-- 使用时替换为当前最新版sdk -->
-    <script src="../../dist/cos-js-sdk-v5.js"></script>
+    <script src="../../dist/cos-js-sdk-v5.min.js"></script>
     <script src="index.js"></script>
     <style>
       table {
@@ -105,14 +105,61 @@
       <div>
         <h3>上传配置项</h3>
         <div>
-          <label for="one">
-            <input type="radio" value="default" v-model="uploadConfig" />
-            默认配置
+          <label>
+            <input type="radio" value="config3-1" v-model="uploadConfig" />
+            3并发 1M分片(默认)
           </label>
-          <label for="two">
-            <input type="radio" value="dynamic" v-model="uploadConfig" />
+
+          <label>
+            <input type="radio" value="config3-8" v-model="uploadConfig" />
+            3并发 8M分片
+          </label>
+
+          <!-- <label>
+            <input type="radio" value="config1-1" v-model="uploadConfig" />
+            1并发 1M分片
+          </label>
+          <label>
+            <input type="radio" value="config1-32" v-model="uploadConfig" />
+            1并发 32M分片
+          </label> -->
+          <label>
+            <input type="radio" value="config1-512" v-model="uploadConfig" />
+            1并发 512M分片
+          </label>
+          <label>
+            <input type="radio" value="config6-8" v-model="uploadConfig" />
+            6并发 8M分片
+          </label>
+          <!-- <label>
+            <input type="radio" value="config6-10" v-model="uploadConfig" />
+            6并发 10M分片
+          </label> -->
+          <!-- <label>
+            <input type="radio" value="config6-16" v-model="uploadConfig" />
+            6并发 16M分片
+          </label> -->
+          <label>
+            <input type="radio" value="config12-16-1" v-model="uploadConfig" />
+            12并发 16M分片 一个域名
+          </label>
+          <label>
+            <input type="radio" value="config12-16-2" v-model="uploadConfig" />
+            12并发 16M分片 两个域名
+          </label>
+
+          <!-- <label>
+            <input type="radio" value="config6-64" v-model="uploadConfig" />
+            6并发 64M分片
+          </label> -->
+          <!-- <label>
+            <input type="radio" value="config10-32" v-model="uploadConfig" />
+            10并发 32M分片
+          </label> -->
+          <!-- <label>
+            <input type="radio" value="config-dynamic" v-model="uploadConfig" />
             动态调整分片与并发
-          </label>
+          </label> -->
         </div>
       </div>
       <div>
@@ -125,8 +172,8 @@
           <div>文件大小: {{uploadingInfo.fileSize}}</div>
           <div>上传进度: {{ uploadingInfo.percent }}</div>
           <div>上传实时速度: {{ uploadingInfo.speed }}</div>
-          <div>本次上传持续时间: {{ uploadingInfo.lastTime }}</div>
-          <div>上传平均速度(非断点续传场景为真实值): {{ uploadingInfo.avgSpeed }}</div>
+          <div>本次上传时间: {{ uploadingInfo.lastTime }}</div>
+          <div>上传平均速度: {{ uploadingInfo.avgSpeed }}</div>
         </div>
       </div>
       <div>
